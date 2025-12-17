@@ -1,0 +1,72 @@
+/* Fundo com gradiente e shapes decorativos */
+body.bg-page {
+  background: linear-gradient(135deg, #f9fbfe, #eef6fb);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Shapes translúcidos nos cantos */
+body::before,
+body::after {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle at center, rgba(40,150,221,0.12) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+body::before {
+  top: -60px;
+  left: -60px;
+}
+body::after {
+  bottom: -60px;
+  right: -60px;
+}
+
+/* Cards principais */
+.head-card, .table, .footer {
+  position: relative;
+  z-index: 1;
+  border-radius: 14px;
+}
+
+/* Títulos de seção mais impactantes */
+.titulo-sessao {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 28px 0 14px;
+  position: relative;
+  padding-left: .9rem;
+  color: #0a2f4a;
+  text-transform: uppercase;
+}
+.titulo-sessao::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #12609b, #2896dd);
+}
+
+/* Botão principal ainda mais chamativo */
+.btn-brand {
+  background: linear-gradient(90deg,#12609b,#2896dd);
+  color:#fff;
+  border-radius: 10px;
+  font-weight: 600;
+  box-shadow: 0 3px 8px rgba(18,96,155,.35);
+  transition: all .25s ease;
+}
+.btn-brand:hover {
+  background: linear-gradient(90deg,#0a2f4a,#12609b);
+  transform: translateY(-1px);
+}
