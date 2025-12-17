@@ -1,0 +1,110 @@
+<section id="logmanager-area" class="mt-4">
+  <h2 class="titulo-sessao d-flex align-items-center">
+    🚚 LogManager • Acompanhamento
+    <button class="btn btn-outline-primary btn-sm ms-auto"
+            data-bs-toggle="modal" data-bs-target="#lgmModal">
+      Importar pedido
+    </button>
+  </h2>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Local ID</th>
+          <th>Cliente</th>
+          <th>Telefone</th>
+          <th>Endereço</th>
+          <th>Itens</th>
+          <th>Status</th>
+          <th style="width:190px">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="lgm-tbody"><tr><td colspan="7" class="text-muted text-center">Carregando…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+#logmanager-area .badge-status { font-weight:600; }
+.badge-pendente  { background:#e2e8f0; color:#334155; }
+.badge-emrota    { background:#fff3cd; color:#664d03; }
+.badge-entregue  { background:#d1e7dd; color:#0f5132; }
+.badge-cancelado { background:#f8d7da; color:#842029; }
+</style>
+
+<script>
+(() => {
+  const tbody = document.getElementById('lgm-tbody');
+
+  function badge(status){
+    const s = (status || 'PENDENTE').toUpperCase();
+    const map = { PENDENTE:'badge-pendente', EM_ROTA:'badge-emrota', ENTREGUE:'badge-entregue', CANCELADO:'badge-cancelado' };
+    return `<span class="badge ${map[s]||'badge-pendente'}">${s}</span>`;
+  }
+  function esc(s){ return (s ?? '').toString().replace(/[&<>"]/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m])); }
+
+  async function carregarTabela(){
+    try{
+      const r = await fetch('/logmanager/pedidos');
+      const data = await r.json();
+      const rows = (data.pedidos||[]).map(p => {
+        const itensCount = (p.itens||[]).reduce((a,i)=>a + (i.quantidade||0), 0);
+        const end = p.endereco ? `${esc(p.endereco.endereco||'')}, ${esc(p.endereco.numero||'')}` : '';
+        return `<tr data-id="${esc(p.id)}">
+          <td><code>${esc(p.id)}</code></td>
+          <td>${esc(p.cliente?.nome || '')}</td>
+          <td>${esc(p.cliente?.telefone || '')}</td>
+          <td>${esc(end)}</td>
+          <td>${itensCount}</td>
+          <td class="status">${badge(p.status)}</td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary btn-atualizar">Atualizar status</button>
+              <button class="btn btn-outline-secondary" disabled>Detalhes</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+      tbody.innerHTML = rows || `<tr><td colspan="7" class="text-center text-muted">Sem pedidos importados ainda.</td></tr>`;
+    }catch(e){
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Erro ao carregar.</td></tr>`;
+    }
+  }
+
+  // expõe global para o modal poder atualizar a grade após importar
+  window.lgmCarregarTabela = carregarTabela;
+
+  // polling
+  carregarTabela();
+  setInterval(carregarTabela, 30000);
+
+  // ação: atualizar status
+  tbody.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('.btn-atualizar');
+    if (!btn) return;
+    const tr = ev.target.closest('tr');
+    const id = tr?.dataset?.id;
+    if (!id) return;
+    btn.disabled = true; btn.textContent = '...';
+    try{
+      const r = await fetch(`/logmanager/status/${encodeURIComponent(id)}`);
+const data = await r.json();
+if (data.ok) {
+  // atualiza badge
+  tr.querySelector('.status').innerHTML = `<span class="badge ...">${data.status_local}</span>`;
+} else {
+  if (data.message && data.message.includes("Pedido não tem 'idEnvio'")) {
+    // se pendente → tenta reimportar em debug
+    const dbg = await fetch(`/logmanager/debug_reimport/${encodeURIComponent(id)}`);
+    const dbgData = await dbg.json();
+    console.warn("DEBUG LogManager", dbgData);
+    alert("Reenvio feito em modo debug. Veja console para detalhes.");
+  } else {
+    alert(data.message || 'Falha ao consultar status.');
+  }
+}
+
+  });
+})();
+</script>
