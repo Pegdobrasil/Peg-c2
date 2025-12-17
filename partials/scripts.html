@@ -1,0 +1,223 @@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+/* ====== Ajustes visuais ====== */
+.table td { vertical-align: middle; }
+
+/* Ícone do WhatsApp sempre pequeno */
+.whatsapp-icon {
+  height: 20px;
+  width: 20px;          /* garante quadrado */
+  object-fit: contain;  /* não distorce */
+  display: inline-block;
+  margin-left: 6px;
+  transition: transform .2s ease;
+}
+.whatsapp-icon-link { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  max-width: 260px;     /* não deixa estourar a célula */
+}
+.whatsapp-icon-link:hover .whatsapp-icon { transform: scale(1.1); }
+
+/* O texto do link (https://wa.me/...) fica curto com reticências */
+.whatsapp-icon-link .small {
+  display: inline-block;
+  max-width: 190px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Modal de zoom de imagem (produtos) */
+.img-zoom-modal {
+  position: fixed; inset: 0;
+  background-color: rgba(0,0,0,.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.img-zoom-modal img {
+  max-width: 90%; max-height: 90%;
+  border-radius: 12px; box-shadow: 0 0 10px #000;
+  cursor: zoom-out;
+}
+</style>
+
+<script>
+// Converte o texto "Retire pelo seu próprio aplicativo" para "Motoboy"
+document.addEventListener("DOMContentLoaded", function() {
+  document.querySelectorAll("td").forEach(td => {
+    if (td.textContent.trim() === "Retire pelo seu próprio aplicativo") {
+      td.dataset.original = td.textContent.trim();
+      td.textContent = "Motoboy";
+    }
+  });
+});
+
+// Zoom de imagem dos produtos (linha de detalhes)
+function mostrarImagemEmZoom(src) {
+  const modal = document.createElement("div");
+  modal.className = "img-zoom-modal";
+  const img = document.createElement("img");
+  img.src = src;
+  img.onclick = () => document.body.removeChild(modal);
+  modal.appendChild(img);
+  document.body.appendChild(modal);
+}
+
+// Abre/fecha a linha de detalhes e carrega os itens via /detalhes/<codigo>
+function mostrarDetalhes(codigo, botao) {
+  const detalhesRow = document.getElementById("detalhes-" + codigo);
+  const container   = document.getElementById("produtos-" + codigo);
+
+  if (detalhesRow.style.display === "none") {
+    fetch("/detalhes/" + codigo)
+      .then(res => res.json())
+      .then(data => {
+        container.innerHTML = "";
+        (data.itens || []).forEach(item => {
+          const card = document.createElement("div");
+          card.style.cssText = `
+            border:1px solid #ccc;border-radius:10px;padding:10px;width:160px;
+            text-align:center;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.1);
+            font-size:14px;
+          `;
+          const imageUrl = `https://cdn.rein.net.br/app/core/pegdobrasil/6.5.3/publico/imagem/produto/${item.sku}.jpg`;
+
+          const img = document.createElement("img");
+          img.src = imageUrl;
+          img.alt = item.nome || "Produto";
+          img.style.cssText = "width:100%;height:auto;border-radius:6px;margin-bottom:8px;cursor:zoom-in;";
+          img.onclick = () => mostrarImagemEmZoom(imageUrl);
+
+          const nome = document.createElement("div");
+          nome.textContent = `${item.sku} - ${item.nome || "Sem nome"}`;
+          nome.style.cssText = "font-weight:bold;margin-bottom:5px;";
+
+          const qtd = document.createElement("div");
+          qtd.textContent = "Quantidade: " + (item.quantidade ?? 0);
+          qtd.style.fontSize = "13px";
+
+          card.append(img, nome, qtd);
+          container.appendChild(card);
+        });
+
+        detalhesRow.style.display = "";
+        botao.textContent = "⬆️";
+      });
+  } else {
+    detalhesRow.style.display = "none";
+    botao.textContent = "⬇️";
+  }
+}
+
+// ====== Notificação de novos pendentes (som + modal + system notif) ======
+function tocarSom() {
+  const audio = document.getElementById("notif-audio");
+  if (audio) audio.play().catch(()=>{});
+}
+
+function mostrarPopup(qtdPedidos, qtdProdutos, pedidos) {
+  const lista = (pedidos || []).map(p => {
+    const itens = (p.produtos || [])
+      .map(i => `<li>${i.sku} - ${i.nome || ''} x${i.quantidade}</li>`).join('');
+    return `<div><b>${p.codigo}</b> - ${p.cliente || ''}<ul>${itens}</ul></div>`;
+  }).join('<hr>');
+
+  const html = `
+  <div class="modal fade" id="popupNovos" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">🆕 ${qtdPedidos} pedidos novos | ${qtdProdutos} produtos vendidos</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">${lista || "Sem itens detalhados."}</div>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML("beforeend", html);
+  new bootstrap.Modal(document.getElementById('popupNovos')).show();
+}
+
+(async function pedirPermissoes(){
+  try { await Notification.requestPermission(); } catch(e){}
+})();
+
+function notifySistema(titulo, corpo) {
+  if (window.Notification && Notification.permission === "granted") {
+    try { new Notification(titulo, { body: corpo, icon: '/static/wpp_icon.png' }); } catch(e){}
+  }
+}
+
+async function verificarNovosPendentes() {
+  try {
+    const r = await fetch("/api/novos_pendentes");
+    const data = await r.json();
+    if (data.qtd_pedidos > 0) {
+      tocarSom();
+      mostrarPopup(data.qtd_pedidos, data.qtd_produtos, data.novos);
+      notifySistema("Novos pedidos", `${data.qtd_pedidos} pedidos | ${data.qtd_produtos} produtos`);
+    }
+  } catch(e) {
+    console.error("Erro ao verificar pendentes:", e);
+  }
+}
+
+// agenda checagem em mm = 02 e 32 de cada hora
+function agendarProximaExecucao() {
+  const agora   = new Date();
+  const minutos = agora.getMinutes();
+  let alvoMin   = minutos < 2 ? 2 : (minutos < 32 ? 32 : 62);
+  let alvoHora  = agora.getHours();
+  if (alvoMin >= 60) { alvoMin -= 60; alvoHora = (alvoHora + 1) % 24; }
+
+  const alvo = new Date();
+  alvo.setHours(alvoHora, alvoMin, 0, 0);
+  const ms = alvo - agora;
+  setTimeout(() => verificarNovosPendentes().finally(agendarProximaExecucao), ms);
+}
+agendarProximaExecucao();
+
+// ====== Atualização do contato (gera link wa.me e troca o botão) ======
+async function refreshContato(codigo, btn){
+  try{
+    btn.disabled = true; btn.textContent = '...';
+
+    const r = await fetch(`/api/refresh_contato/${codigo}`, { method: 'POST' });
+    const data = await r.json();
+
+    if (!data.ok || !data.contato) {
+      btn.textContent = '⟳'; btn.disabled = false;
+      alert('Não foi possível obter o contato' + (data.erro ? ` (${data.erro})` : '')); 
+      return;
+    }
+
+    const a = document.createElement('a');
+    a.href = `https://wa.me/${data.contato}`;
+    a.target = '_blank';
+    a.className = 'whatsapp-icon-link';
+
+    const img = document.createElement('img');
+    img.src = "{{ url_for('static', filename='wpp_icon.png') }}";
+    img.alt = "WhatsApp";
+    img.className = "whatsapp-icon";
+
+    a.appendChild(img);
+
+    // Opcional: mostrar o link curto com reticências
+    const span = document.createElement('span');
+    span.className = 'small text-primary';
+    span.textContent = `https://wa.me/${data.contato}`;
+    a.appendChild(span);
+
+    btn.parentElement.replaceChild(a, btn);
+  }catch(e){
+    console.error(e);
+    btn.textContent = '⟳';
+    btn.disabled = false;
+    alert('Erro inesperado ao atualizar o contato.');
+  }
+}
+</script>
