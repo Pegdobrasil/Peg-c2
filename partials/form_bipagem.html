@@ -1,0 +1,166 @@
+<form id="form-bipagem" class="mb-3">
+  <div class="input-group">
+    <span class="input-group-text">📤</span>
+    <input id="bip-input" type="text" name="codigo_pedido" class="form-control"
+           placeholder="Bipar código do pedido ou rastreio" autocomplete="off" autofocus>
+    <button id="btn-enviar" type="submit" class="btn btn-primary"><b>Enviar</b></button>
+    <button id="btn-limpar" class="btn btn-outline-secondary" type="button">Limpar</button>
+    <button id="btn-continuo" class="btn btn-outline-success" type="button"
+            data-ativo="true" title="F2 alterna">
+      Modo Contínuo: <span class="estado">ON</span>
+    </button>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-1">
+    <small id="bip-status" class="text-muted">Modo: aguardando…</small>
+    <small class="text-muted">
+      Atalhos: <code>Enter</code> enviar • <code>Esc</code> limpar • <code>F2</code> contínuo
+    </small>
+  </div>
+
+  <div id="bip-historico" class="mt-2"></div>
+</form>
+
+<style>
+#bip-input.scan { border-color:#0d6efd; box-shadow:0 0 0 .2rem rgba(13,110,253,.25); }
+#bip-input.ok    { animation: bip-ok 600ms ease; }
+#bip-input.err   { animation: bip-err 700ms ease; }
+@keyframes bip-ok  { 0%{background:#d1e7dd} 100%{background:white} }
+@keyframes bip-err { 0%{background:#f8d7da} 100%{background:white} }
+
+.shake { animation: shake .35s linear; }
+@keyframes shake {
+  10%, 90% {transform: translateX(-2px);}
+  20%, 80% {transform: translateX( 4px);}
+  30%, 50%, 70% {transform: translateX(-6px);}
+  40%, 60% {transform: translateX( 6px);}
+}
+
+#bip-historico .tag {
+  display:inline-block; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:999px;
+  padding:.15rem .55rem; margin:.15rem; font-size:.8rem;
+}
+#bip-historico .tag time { color:#64748b; margin-left:.35rem; }
+</style>
+
+<script>
+(() => {
+  const $ = sel => document.querySelector(sel);
+  const input = $('#bip-input');
+  const form  = $('#form-bipagem');
+  const btnCont = $('#btn-continuo');
+  const lblCont = btnCont.querySelector('.estado');
+  const status  = $('#bip-status');
+  const histDiv = $('#bip-historico');
+
+  let ultimoCodigo = '';
+  let ultimoMomento = 0;
+  let modoScanner = false;
+  let continuous = true;
+  let keyTimes = [];
+
+  // Histórico (até 8 registros, salvo no localStorage)
+  const HIST_KEY = 'peg:bip:hist';
+  const getHist = () => { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; } };
+  const setHist = arr => localStorage.setItem(HIST_KEY, JSON.stringify(arr.slice(0,8)));
+  const addHist = codigo => { const arr = getHist(); arr.unshift({ c: codigo, t: Date.now() }); setHist(arr); renderHist(); };
+  const renderHist = () => { histDiv.innerHTML = getHist().map(i => `<span class="tag">${i.c}<time>${new Date(i.t).toLocaleTimeString()}</time></span>`).join(''); };
+
+  // Sons básicos via WebAudio
+  let audioCtx;
+  function beep(freq=880, dur=120, type='sine', vol=0.2) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g).connect(audioCtx.destination); o.start();
+      setTimeout(()=>o.stop(), dur);
+    } catch(e) {}
+  }
+  const beepOk  = () => { beep(880,120,'triangle',0.15); setTimeout(()=>beep(1320,100,'triangle',0.12),120); };
+  const beepErr = () => { beep(220,160,'sawtooth',0.18); };
+
+  // Validação de EAN-13
+  function isValidEAN13(code){
+    if (!/^\d{13}$/.test(code)) return true;
+    const digits = code.split('').map(d=>+d);
+    const check = digits.pop();
+    const sum = digits.reduce((acc,d,i)=> acc + d * (i % 2 ? 3 : 1), 0);
+    return ((10 - (sum % 10)) % 10) === check;
+  }
+
+  function sanitize(s){ return (s||'').replace(/[\s\u200B-\u200D\uFEFF]/g,'').trim(); }
+  function setModeScanner(active){ modoScanner=active; input.classList.toggle('scan', active); status.textContent=`Modo: ${active?'leitor (scanner)':'digitação manual'}`; }
+  function alternarContinuo(){ continuous=!continuous; btnCont.dataset.ativo=String(continuous); lblCont.textContent=continuous?'ON':'OFF'; }
+  btnCont.addEventListener('click', alternarContinuo);
+
+  function marcarOK(){ input.classList.remove('err','shake'); input.classList.add('ok'); setTimeout(()=>input.classList.remove('ok'),800); }
+  function marcarERR(){ input.classList.remove('ok'); input.classList.add('err','shake'); setTimeout(()=>input.classList.remove('err','shake'),900); }
+  function limpar(){ input.value=''; input.focus(); status.textContent='Limpo. Aguardando…'; }
+  $('#btn-limpar').addEventListener('click', limpar);
+
+  // Detecta scanner pelo tempo entre teclas
+  input.addEventListener('keydown', ev => {
+    const now = performance.now();
+    if (keyTimes.length) keyTimes.push(now - keyTimes.at(-1).t);
+    keyTimes.push({t:now});
+    if (keyTimes.length>12) keyTimes.shift();
+    const intervals=keyTimes.filter(x=>typeof x==='number');
+    if (intervals.length>=6){ const avg=intervals.reduce((a,b)=>a+b,0)/intervals.length; setModeScanner(avg<35); }
+    if (ev.key==='Escape'){ ev.preventDefault(); limpar(); }
+    if (ev.key==='F2'){ ev.preventDefault(); alternarContinuo(); }
+  });
+
+  // Envio AJAX (sem reload)
+  // --- COOLDOWN compartilhado com a tabela ---
+const COOLDOWN_MS = 60000;
+function cdKey(codigo){ return `peg:bip:cd:${codigo}`; }
+function cdGet(codigo){ return parseInt(localStorage.getItem(cdKey(codigo))||'0',10) || 0; }
+function cdLeft(codigo){ return Math.max(0, COOLDOWN_MS - (Date.now() - cdGet(codigo))); }
+function cdSet(codigo){ try{ localStorage.setItem(cdKey(codigo), String(Date.now())); }catch(e){} }
+
+form.addEventListener('submit', async ev => {
+  ev.preventDefault();
+  let code = sanitize(input.value); input.value=code;
+  if (!code){ status.textContent='Nada para enviar.'; beepErr(); marcarERR(); return; }
+
+  // trava 1 minuto (inclusive para leitor + envio manual)
+  const left = cdLeft(code);
+  if(left>0){
+    const secs = Math.ceil(left/1000);
+    status.textContent = `Aguarde ${secs}s para bipar novamente este pedido.`;
+    beepErr(); marcarERR(); return;
+  }
+
+  if (!isValidEAN13(code)){ status.textContent='Aviso: EAN-13 inválido (enviando mesmo assim).'; input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'),500); }
+
+  status.textContent='Enviando…'; beepOk(); marcarOK(); addHist(code);
+
+  try{
+    const body = new URLSearchParams({ codigo_pedido: code });
+    const resp = await fetch('/confirmar?ajax=1', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'}, body });
+    const data = await resp.json().catch(()=>({}));
+
+    if(resp.status===429){
+      const secs = data?.cooldown ?? 60;
+      status.textContent = data?.erro || `Aguarde ${secs}s para bipar novamente.`;
+      beepErr(); marcarERR(); return;
+    }
+    if(!resp.ok||!data?.ok) throw new Error(data?.erro||`Falha HTTP ${resp.status}`);
+
+    // sucesso → grava cooldown
+    cdSet(code);
+
+    status.textContent=(data.flashes&&data.flashes[0])?data.flashes[0]:'Concluído.';
+    if (continuous){ input.value=''; input.focus(); }
+  }catch(err){
+    status.textContent='Erro ao enviar.'; beepErr(); marcarERR(); alert(err?.message||'Falha ao bipar.');
+  }
+});
+
+
+  input.addEventListener('paste',()=>setTimeout(()=>input.value=sanitize(input.value),0));
+  window.addEventListener('pageshow',()=>{input.focus();});
+  renderHist(); setModeScanner(false);
+})();
+</script>
