@@ -1,0 +1,28 @@
+{% if avulsos %}
+  <h2 class="titulo-sessao">⚠️ Pedidos Avulsos / Fora do Fluxo</h2>
+  <div class="alert alert-warning">Estes pedidos foram bipados, mas não pertencem ao fluxo normal atual.</div>
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm table-warning">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Cliente</th>
+          <th>Transportadora</th>
+          <th>Rastreio</th>
+          <th>Situação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in avulsos %}
+        <tr>
+          <td>{{ p.codigo }}</td>
+          <td>{{ p.cliente }}</td>
+          <td>{{ p.transportadora }}</td>
+          <td>{{ p.codigoRastreio or "—" }}</td>
+          <td>Situação {{ p.situacao }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
