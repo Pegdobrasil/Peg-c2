@@ -1,0 +1,449 @@
+<!-- Modal: Importar pedido (pro edition) -->
+<div class="modal fade" id="lgmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content lgm-pro">
+
+      <form id="lgm-form">
+        <div class="modal-header lgm-gradient">
+          <h5 class="modal-title m-0">Importar pedido • LogManager</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+
+        <div class="modal-body">
+          <!-- IDENTIFICAÇÃO -->
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">idVenda *</label>
+              <input name="idVenda" class="form-control" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">idEnvio *</label>
+              <input name="idEnvio" class="form-control" placeholder="ex: LM-123ABC" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label d-flex align-items-center gap-2">
+                <span>Código interno</span> <span class="badge text-bg-secondary">opcional</span>
+              </label>
+              <div class="lgm-high">
+                <span class="lgm-ico">🏷️</span>
+                <input name="codigointerno" class="form-control lgm-focus" placeholder="ex: PD-000123">
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Data de criação</label>
+              <input name="dtCriacao" type="datetime-local" class="form-control">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Valor frete (auto)</label>
+              <input name="vlFrete" id="lgm-vlFrete" type="number" step="0.01" class="form-control" value="0" readonly>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Valor pago</label>
+              <input name="vlPago" type="number" step="0.01" class="form-control" value="0">
+            </div>
+
+            <!-- CLIENTE -->
+            <div class="col-md-6">
+              <label class="form-label">Nome do comprador *</label>
+              <div class="lgm-high">
+                <span class="lgm-ico">👤</span>
+                <input name="nomeComprador" class="form-control lgm-focus" required placeholder="Quem vai receber?">
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Telefone</label>
+              <div class="lgm-high">
+                <span class="lgm-ico">📞</span>
+                <input name="telefoneComprador" class="form-control lgm-focus" placeholder="apenas números">
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Telefone 2</label>
+              <input name="telefoneComprador_1" class="form-control" placeholder="opcional">
+            </div>
+
+            <!-- ENDEREÇO (CEP auto) -->
+            <div class="col-md-3">
+              <label class="form-label">CEP *</label>
+              <div class="input-group">
+                <span class="input-group-text">📮</span>
+                <input name="cepEntrega" id="lgm-cep" class="form-control" required placeholder="00000-000">
+              </div>
+            </div>
+
+            <div class="col-md-5">
+              <label class="form-label">Endereço *</label>
+              <input name="enderecoEntrega" id="lgm-logradouro" class="form-control" required>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Número</label>
+              <div class="lgm-high">
+                <span class="lgm-ico">#</span>
+                <input name="enderecoEntregaNumero" class="form-control lgm-focus" placeholder="s/n? ok">
+              </div>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Complemento</label>
+              <div class="lgm-high">
+                <span class="lgm-ico">➕</span>
+                <input name="enderecoEntregaComplemento" class="form-control lgm-focus" placeholder="bloco, ap, ref...">
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Bairro *</label>
+              <input name="bairroEntrega" id="lgm-bairro" class="form-control" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Cidade *</label>
+              <input name="cidadeEntrega" id="lgm-cidade" class="form-control" required>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">UF *</label>
+              <input name="estadoEntrega" id="lgm-uf" maxlength="2" class="form-control" required>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Comentários</label>
+              <input name="comentarios" class="form-control" placeholder="Observações (opcional)">
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- ITENS -->
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="m-0">Itens</h6>
+            <button id="btn-add-item" type="button" class="btn btn-primary btn-sm lgm-ripple">+ Adicionar item</button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>SKU</th><th>Descrição *</th><th>Qtd *</th>
+                  <th>Peso (kg)</th><th>Larg. (cm)</th><th>Alt. (cm)</th><th>Comp. (cm)</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="lgm-itens"></tbody>
+            </table>
+          </div>
+
+          <!-- RESUMO -->
+          <div id="lgm-resumo" class="lgm-summary mt-3">
+            <span class="chip"><b>Peso:</b> <span id="r-peso">0,00</span> kg</span>
+            <span class="chip"><b>Volume:</b> <span id="r-vol">0,000</span> m³</span>
+            <span class="chip"><b>Veículo:</b> <span id="r-veh">Moto</span></span>
+            <span class="chip"><b>Cidade:</b> <span id="r-cid">—</span></span>
+            <span class="chip"><b>Tarifa:</b> R$ <span id="r-tar">0,00</span></span>
+            <span class="chip"><b>Caixa (cm):</b> <span id="r-box">0×0×0</span></span>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <span id="lgm-feedback" class="me-auto small text-muted"></span>
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fechar</button>
+          <button class="btn btn-primary lgm-ripple" id="lgm-submit" type="submit">
+            <span class="btn-label">Importar</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<style>
+:root{
+  --ink:#0f172a;         /* slate-900 */
+  --muted:#64748b;       /* slate-500 */
+  --soft:#f1f5f9;        /* slate-100 */
+  --line:#e2e8f0;        /* slate-200 */
+  --pri:#2563eb;         /* blue-600 */
+  --pri-700:#1d4ed8;     /* blue-700 */
+  --acc:#06b6d4;         /* cyan-500 */
+}
+
+.lgm-pro{ border:0; border-radius:16px; box-shadow:0 24px 60px rgba(2,6,23,.25); overflow:hidden; }
+.lgm-gradient{ background:linear-gradient(90deg,var(--pri),var(--acc)); color:#fff; }
+
+.form-label{ font-weight:600; color:#334155; }
+
+.lgm-high{ position:relative; }
+.lgm-high .lgm-ico{
+  position:absolute; inset:0 auto 0 .6rem; display:grid; place-items:center;
+  color:var(--pri); font-size:1rem; opacity:.9;
+}
+.lgm-high .form-control{
+  padding-left:2rem; border:2px solid var(--line); transition:all .15s ease;
+}
+.lgm-focus:focus{
+  transform:translateY(-1px);
+  box-shadow:0 0 0 .25rem rgba(37,99,235,.15);
+  border-color:var(--pri);
+}
+
+.lgm-summary{ display:flex; flex-wrap:wrap; gap:.5rem; }
+.lgm-summary .chip{
+  background:#fff; border:1px solid var(--line); border-radius:999px;
+  padding:.35rem .7rem; font-size:.9rem; color:var(--ink);
+}
+
+.table thead th{ font-weight:600; }
+
+.lgm-ripple { position:relative; overflow:hidden; }
+.lgm-ripple::after{
+  content:""; position:absolute; inset:0; border-radius:12px;
+  background:radial-gradient(120px 120px at var(--x) var(--y), rgba(255,255,255,.35), transparent 60%);
+  opacity:0; transition:opacity .2s;
+}
+.lgm-ripple:hover::after{ opacity:1; }
+
+.shake{ animation:shake .32s linear; }
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}
+  20%,80%{transform:translateX( 4px)}
+  30%,50%,70%{transform:translateX(-6px)}
+  40%,60%{transform:translateX( 6px)}
+}
+</style>
+
+<script>
+(() => {
+  const form      = document.getElementById('lgm-form');
+  const itensBody = document.getElementById('lgm-itens');
+  const feedback  = document.getElementById('lgm-feedback');
+  const btnSubmit = document.getElementById('lgm-submit');
+
+  const inpCep    = document.getElementById('lgm-cep');
+  const inpCidade = document.getElementById('lgm-cidade');
+  const inpUF     = document.getElementById('lgm-uf');
+  const inpLogr   = document.getElementById('lgm-logradouro');
+  const inpBairro = document.getElementById('lgm-bairro');
+  const inpVlFrete= document.getElementById('lgm-vlFrete');
+
+  const rPeso = document.getElementById('r-peso');
+  const rVol  = document.getElementById('r-vol');
+  const rVeh  = document.getElementById('r-veh');
+  const rCid  = document.getElementById('r-cid');
+  const rTar  = document.getElementById('r-tar');
+  const rBox  = document.getElementById('r-box');
+
+  // hover ripple coords
+  document.querySelectorAll('.lgm-ripple').forEach(btn=>{
+    btn.addEventListener('mousemove', e=>{
+      const r = btn.getBoundingClientRect();
+      btn.style.setProperty('--x', (e.clientX - r.left)+'px');
+      btn.style.setProperty('--y', (e.clientY - r.top)+'px');
+    });
+  });
+
+  // CEP → ViaCEP
+  const onlyDigits = s => (s||'').replace(/\D+/g,'');
+  async function preencherEnderecoPorCEP(){
+    const cep = onlyDigits(inpCep.value);
+    if (cep.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await r.json();
+      if (!data.erro) {
+        inpLogr.value  = data.logradouro || '';
+        inpBairro.value= data.bairro     || '';
+        inpCidade.value= data.localidade || '';
+        inpUF.value    = data.uf         || '';
+      }
+    } catch(e){}
+  }
+  inpCep.addEventListener('blur', preencherEnderecoPorCEP);
+  inpCep.addEventListener('input', () => { if (onlyDigits(inpCep.value).length === 8) preencherEnderecoPorCEP(); });
+
+  // Tabela de tarifas (Moto/Carro)
+  const FAIXAS = [
+    { cidade:'Curitiba',               ini:80000000, fim:82999999, moto:8.90,  carro:18.90 },
+    { cidade:'Almirante Tamandaré',    ini:83500001, fim:83534999, moto:13.90, carro:24.90 },
+    { cidade:'Araucária',              ini:83700001, fim:83729999, moto:13.90, carro:24.90 },
+    { cidade:'Colombo',                ini:83400001, fim:83419999, moto:13.90, carro:24.90 },
+    { cidade:'Pinhais',                ini:83320001, fim:83349999, moto:13.90, carro:24.90 },
+    { cidade:'Piraquara',              ini:83300001, fim:83319999, moto:13.90, carro:24.90 },
+    { cidade:'São José dos Pinhais',   ini:83000001, fim:83149999, moto:13.90, carro:24.90 },
+    { cidade:'Fazenda Rio Grande',     ini:83820001, fim:83839999, moto:16.90, carro:45.00 },
+  ];
+  const toBR = n => (isFinite(n) ? n.toFixed(2).replace('.',',') : '0,00');
+  function tarifaPorCep(cepDigits, veiculo){
+    const num = parseInt(cepDigits, 10);
+    if (Number.isNaN(num)) return null;
+    const faixa = FAIXAS.find(f => num >= f.ini && num <= f.fim);
+    if (!faixa) return null;
+    return { cidade: faixa.cidade, preco: veiculo === 'CARRO' ? faixa.carro : faixa.moto };
+  }
+
+  // caixa estimada (simples)
+  function estimarCaixa(itens){
+    let L=0,W=0,H=0;
+    itens.forEach(i => {
+      const q = i.quantidade||1;
+      L = Math.max(L, i.comprimento||0);
+      W = Math.max(W, i.largura||0);
+      H += (i.altura||0) * q;
+    });
+    return { L, W, H };
+  }
+
+  function recalcularFrete(){
+    const itens = Array.from(itensBody.querySelectorAll('tr')).map(tr => {
+      const g = n => parseFloat(tr.querySelector(`[name="${n}"]`)?.value.replace(',','.') || '0') || 0;
+      return {
+        quantidade: Math.max(1, parseInt(tr.querySelector('[name="quantidade"]')?.value || '1',10) || 1),
+        peso: g('peso'), largura: g('largura'), altura: g('altura'), comprimento: g('comprimento')
+      };
+    });
+
+    let pesoKg=0, volM3=0;
+    itens.forEach(i => {
+      pesoKg += i.peso * i.quantidade;
+      volM3  += (i.largura*i.altura*i.comprimento)/1_000_000 * i.quantidade; // cm³ → m³
+    });
+
+    // Regra: volume > 0.27 m³ OU peso > 6 kg => CARRO
+    const veh = (volM3 > 0.27 || pesoKg > 6) ? 'CARRO' : 'MOTO';
+    const cepDigits = onlyDigits(inpCep.value);
+    const t = tarifaPorCep(cepDigits, veh);
+    const box = estimarCaixa(itens);
+
+    rPeso.textContent = toBR(pesoKg);
+    rVol.textContent  = (isFinite(volM3) ? volM3.toFixed(3).replace('.',',') : '0,000');
+    rVeh.textContent  = veh === 'CARRO' ? 'Carro' : 'Moto';
+    rCid.textContent  = t ? t.cidade : 'Fora da área';
+    rTar.textContent  = t ? toBR(t.preco) : '0,00';
+    rBox.textContent  = `${Math.round(box.L)}×${Math.round(box.W)}×${Math.round(box.H)}`;
+    inpVlFrete.value  = t ? t.preco.toFixed(2) : 0;
+  }
+
+  function novaLinhaItem(v={}){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="form-control form-control-sm" name="sku"        value="${v.sku||''}"></td>
+      <td><input class="form-control form-control-sm" name="descricao"  value="${v.descricao||''}" required></td>
+      <td style="width:80px"><input type="number" min="1" value="${v.quantidade||1}" class="form-control form-control-sm" name="quantidade" required></td>
+      <td style="width:90px"><input type="number" step="0.01" value="${v.peso||0}"        class="form-control form-control-sm" name="peso"></td>
+      <td style="width:90px"><input type="number" step="0.1"  value="${v.largura||0}"     class="form-control form-control-sm" name="largura"></td>
+      <td style="width:90px"><input type="number" step="0.1"  value="${v.altura||0}"      class="form-control form-control-sm" name="altura"></td>
+      <td style="width:90px"><input type="number" step="0.1"  value="${v.comprimento||0}" class="form-control form-control-sm" name="comprimento"></td>
+      <td style="width:40px"><button type="button" class="btn btn-outline-secondary btn-sm">×</button></td>
+    `;
+    tr.querySelector('button').onclick = () => { tr.remove(); recalcularFrete(); };
+    tr.querySelectorAll('input').forEach(i => i.addEventListener('input', recalcularFrete));
+    itensBody.appendChild(tr);
+    recalcularFrete();
+  }
+
+  document.getElementById('btn-add-item').addEventListener('click', () => novaLinhaItem());
+  novaLinhaItem(); // começa com 1 linha
+  inpCep.addEventListener('input', recalcularFrete);
+
+  function shakeIfEmpty(input){
+    if (!input.checkValidity()) { input.classList.add('shake'); setTimeout(()=>input.classList.remove('shake'), 350); }
+  }
+
+  // SUBMIT
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+
+    ['idVenda','idEnvio','nomeComprador','cepEntrega','enderecoEntrega','bairroEntrega','cidadeEntrega','estadoEntrega']
+      .forEach(n => shakeIfEmpty(form.querySelector(`[name="${n}"]`)));
+
+    btnSubmit.disabled = true; btnSubmit.classList.add('disabled');
+    feedback.textContent = 'Enviando…';
+
+    const itens = Array.from(itensBody.querySelectorAll('tr')).map(tr => {
+      const gS = n => tr.querySelector(`[name="${n}"]`)?.value || '';
+      const gN = n => parseFloat(gS(n).replace(',','.')) || 0;
+      return {
+        sku: gS('sku'),
+        descricao: gS('descricao'),
+        quantidade: Math.max(1, parseInt(gS('quantidade')||'1',10) || 1),
+        peso: gN('peso'), largura: gN('largura'), altura: gN('altura'), comprimento: gN('comprimento'),
+      };
+    }).filter(i => i.descricao || i.sku);
+
+    let pesoKg=0, volM3=0;
+    itens.forEach(i => {
+      pesoKg += i.peso * i.quantidade;
+      volM3  += (i.largura*i.altura*i.comprimento)/1_000_000 * i.quantidade;
+    });
+    const meio_transporte = (volM3 > 0.27 || pesoKg > 6) ? 'CARRO' : 'MOTO';
+
+    const fd = new FormData(form);
+    const dt = Object.fromEntries(fd.entries());
+    const only = s => (s||'').replace(/\D+/g,'');
+
+    const payload = {
+      cliente_nome: dt.nomeComprador,
+      telefone: only(dt.telefoneComprador),
+      cep: only(dt.cepEntrega),
+      estado: (dt.estadoEntrega||'').toUpperCase(),
+      cidade: dt.cidadeEntrega, bairro: dt.bairroEntrega,
+      endereco: dt.enderecoEntrega, numero: dt.enderecoEntregaNumero,
+      complemento: dt.enderecoEntregaComplemento,
+      comentarios: dt.comentarios,
+      meio_transporte,
+      itens,
+      lm: {
+        idVenda: dt.idVenda, idEnvio: dt.idEnvio, codigointerno: dt.codigointerno,
+        dtCriacao: dt.dtCriacao, vlFrete: +(dt.vlFrete||0), vlPago: +(dt.vlPago||0),
+        nomeComprador: dt.nomeComprador,
+        enderecoEntrega: dt.enderecoEntrega, enderecoEntregaNumero: dt.enderecoEntregaNumero,
+        enderecoEntregaComplemento: dt.enderecoEntregaComplemento,
+        cepEntrega: dt.cepEntrega, cidadeEntrega: dt.cidadeEntrega,
+        estadoEntrega: dt.estadoEntrega, bairroEntrega: dt.bairroEntrega,
+        comentarios: dt.comentarios,
+        telefoneComprador: only(dt.telefoneComprador),
+        telefoneComprador_1: only(dt.telefoneComprador_1),
+        itens: itens.map(i => ({
+          quantidade: i.quantidade,
+          descricao: i.descricao,
+          dimensoes: { largura: i.largura, altura: i.altura, comprimento: i.comprimento, peso: i.peso }
+        }))
+      }
+    };
+
+    try{
+      const r = await fetch('/logmanager/importar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await r.json();
+
+      if (data.ok){
+        feedback.textContent = 'Importado com sucesso.';
+        if (window.lgmCarregarTabela) window.lgmCarregarTabela();
+        setTimeout(() => document.querySelector('#lgmModal .btn-close').click(), 400);
+      } else {
+        throw new Error(data.message || 'Falha ao importar.');
+      }
+    } catch(e){
+      feedback.textContent = 'Erro: ' + (e.message || 'inesperado');
+      form.classList.add('shake'); setTimeout(()=>form.classList.remove('shake'), 400);
+      alert('Ops! ' + (e.message || 'Tente novamente.'));
+    } finally {
+      btnSubmit.disabled = false; btnSubmit.classList.remove('disabled');
+    }
+  });
+
+  // recalcula ao abrir o modal
+  document.getElementById('lgmModal').addEventListener('shown.bs.modal', () => {
+    inpCep.focus(); recalcularFrete();
+  });
+})();
+</script>
